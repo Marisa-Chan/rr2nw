@@ -130,6 +130,7 @@ protected:
    unsigned long m_friendColor;
    unsigned long m_enemyColor;
    unsigned long m_objectColor;
+   unsigned long m_unkColor;   //RE don't know color
    unsigned long m_portalColor;
    unsigned long m_artefactColor;
 
@@ -177,8 +178,11 @@ protected:
    int m_winY;
 
    CGRImage   *m_levelMap;  // bmp image
+   CGRImage   *m_artefonImg;  // bmp image
    int         m_curMission;
    SMapMission m_mission[MAX_MISSIONS];
+   
+   static char m_levelName[256];
 };
 
 extern DebugMap g_debugMap;

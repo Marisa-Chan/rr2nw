@@ -16,7 +16,7 @@ file view.obj,terrain.obj
 file sound.obj
 file _bush.obj
 file _scene.obj
-file ..\..\arena\arenawd.lib
+file ../../ARENA/arenawd.lib
 file main.obj
 #file title.obj,tpal.obj,tfont.obj,tres.obj,tpic.obj,tmenu.obj,tflc.obj,outro.obj, musflc.obj
 

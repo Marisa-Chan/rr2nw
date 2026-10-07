@@ -1,4 +1,4 @@
-DEBUG=0
+DEBUG=1
 NT=1
 OPENGL=0
 GLIDE=0
@@ -40,7 +40,7 @@ L_SYS+=F
 L_TARG=$(L_SYS)$(L_DEBUG)
 
 I=$(PROJ)\INCLUDE;$(DLIB)\H;$(PROJ)\ARENA;$(PROJ)\ARENA\H
-LIBPATH=$(DLIB)
+LIBPATH=$(DLIB)\WC
 OUT=..\..\OUTPUT
 
 
@@ -59,11 +59,11 @@ LIBRARIANRSP = $(PROJ)\3de$(L_DEBUG).rsp
 CPP = wpp386 -mf -5s -zq -i$(I) -fo$(O)\
 C = wcc386 -mf -5s -zq -i$(I) -fo$(O)\
 ASM = tasmx /ml /m /t /zi /w-ALN
-ANGEL = angelmasm
+ANGEL = angel
 LINK = wlink libp $(LIBPATH) d a
 
 !ifneq DEBUG 0
-CPP += -d2 -d_DEBUG -wx -we
+CPP += -d2 -d_DEBUG
 C += -d2 -d_DEBUG
 #ASM += /d_DEBUG
 !else
@@ -101,10 +101,10 @@ ASM += /d_WINNT
 .c.obj: .AUTODEPEND
 	$(C) $^&.C
 
-.asm.obj: .AUTODEPEND
+.asm.obj:
 	$(ASM) $^&.ASM$(ASMSX)
 
-.ang.obj: .AUTODEPEND
+.ang.obj:
 	$(ANGEL) $^&.ANG $(O)\$^&.ASX
 	$(ASM) $(O)\$^&.ASX$(ASMSX)
 

@@ -1,0 +1,88 @@
+#!/bin/bash
+# ============================================================================
+# nw-asm-wine — ассемблерная часть сборки через wine (без dosbox напрямую).
+#
+# Использует Borland TASM32.EXE (Turbo Assembler 4.1, Win/DOS-экстендер —
+# современный wine запускает его через встроенный dosbox).
+# ВАЖНО: "tasmx.exe" от Squak Valley Software (Table Assembler) — другой
+# продукт, x86 он не собирает.
+#
+# Требуется (на хосте): wine. TASM ищется (по порядку):
+#       $TASM_EXE, docker/tasm/tasm32.exe, docker/tasm/TASM32.EXE
+#
+# Результат кладётся в docker/asm-obj/{WR,WD} — ОТДЕЛЬНО от дерева исходников.
+# Основная сборка (nw-build в контейнере) при старте сама копирует их в
+# obj/wr, obj/wd.
+#
+# Нюанс: встроенный dosbox wine монтирует как C: только текущий каталог,
+# поэтому TASM запускается с именами файлов в каталоге модуля, а готовые
+# .obj/.asx скрипт переносит в asm-obj.
+#
+# Использование:  ./nw-asm-wine [wr|wd|both]     (по умолчанию wr)
+# ============================================================================
+set -e
+HERE="$(cd "$(dirname "$0")" && pwd)"
+SRC="$(cd "$HERE/.." && pwd)"
+MODE=${1:-wr}
+TASMFLAGS="/ml /m /t /zi /w-ALN /d_WINNT"
+
+# --- locate TASM ---
+TASM="${TASM_EXE:-}"
+[ -z "$TASM" ] && [ -f "$HERE/tasm/TASM32.EXE" ] && TASM="$HERE/tasm/TASM32.EXE"
+[ -z "$TASM" ] && [ -f "$HERE/tasm/tasm32.exe" ] && TASM="$HERE/tasm/tasm32.exe"
+if [ -z "$TASM" ]; then
+    echo "nw-asm-wine: TASM не найден. Положите TASM32.EXE в docker/tasm/ или задайте TASM_EXE." >&2
+    exit 1
+fi
+TASM_UNIX=$(readlink -f "$TASM")
+
+# TASM в каталоге модуля: вход и выход локальными именами; результат -> $2
+run_tasm() { # $1 = каталог модуля, $2 = имя исходника, $3 = куда положить obj
+    local unixdir="$1" src="$2" dst="$3" objname="${2%.*}.OBJ"
+    (
+        cd "$unixdir"
+        rm -f "$objname"
+        wine "$TASM_UNIX" $TASMFLAGS "$src,$objname" 2>&1 | grep -viE "fixme|winediag|DOSBox|CONFIG:|ALSA|MIDI|cycles" || true
+    )
+    local produced
+    produced=$(cd "$unixdir" && ls -t | grep -i "^${objname}$" | head -1)
+    if [ -z "$produced" ] || [ ! -s "$unixdir/$produced" ]; then
+        echo "nw-asm-wine: TASM не создал $objname в $unixdir" >&2
+        exit 1
+    fi
+    mkdir -p "$(dirname "$dst")"
+    mv "$unixdir/$produced" "$dst"
+}
+
+case "$MODE" in
+    wr)   OUTS=(WR) ;;
+    wd)   OUTS=(WD) ;;
+    both) OUTS=(WR WD) ;;
+    *) echo "usage: $0 [wr|wd|both]" >&2; exit 1 ;;
+esac
+
+for OUT in "${OUTS[@]}"; do
+    OUTDIR="$HERE/asm-obj/$OUT"      # docker/asm-obj/<WR|WD>
+    mkdir -p "$OUTDIR"
+    cd "$SRC/GRAPH"
+
+    echo "======== GRAPH -> $OUT ========"
+    # 1) чистые .asm (LIGHT1 есть и как .asm и как .ang — берём .asm)
+    for f in $(find . -maxdepth 1 -iname '*.asm' | tr 'a-z' 'A-Z'); do
+        name=$(basename "$f" .ASM)
+        [ "$name" = "MODE" ] && continue      # mode.obj линковщику не нужен
+        echo "  tasm $name"
+        run_tasm "$SRC/GRAPH" "$name.ASM" "$OUTDIR/$(echo "$name" | tr A-Z a-z).obj"
+    done
+    # 2) .ang: angel -> .asx -> tasm (если нет .asm-близнеца)
+    for f in $(find . -maxdepth 1 -iname '*.ang' | tr 'a-z' 'A-Z'); do
+        name=$(basename "$f" .ANG)
+        [ -n "$(find "$SRC/GRAPH" -maxdepth 1 -iname "$name.ASM" -print -quit)" ] && continue
+        echo "  angel+tasm $name"
+        asx=$(cd "$SRC/GRAPH" && wine "$SRC/angelmasm.exe" "$name.ANG" "$name.ASX" >/dev/null 2>&1; ls -t | grep -i "^${name}.ASX$" | head -1)
+        [ -n "$asx" ] || { echo "nw-asm-wine: angel не создал $name.ASX" >&2; exit 1; }
+        run_tasm "$SRC/GRAPH" "$asx" "$OUTDIR/$(echo "$name" | tr A-Z a-z).obj"
+        rm -f "$SRC/GRAPH/$asx"
+    done
+done
+echo "nw-asm-wine: готово. Далее: docker/build.sh [release|debug]"

@@ -13,6 +13,7 @@ extern SDeviceList _dL;
 extern IDirect3DDevice2       *_d3dDevice;
 extern float __HazeLen;
 
+char DebugMap::m_levelName[256];
 
 //=======================================================
 DebugMap::DebugMap(){
@@ -26,6 +27,7 @@ DebugMap::~DebugMap(){
 void DebugMap::Init(const char * mapName)
 {
    m_levelMap->LoadFromBMPFile(mapName, 0, 0);
+   strcpy(m_levelName, mapName);
 
    m_mapW = m_levelMap->Width();
    m_mapH = m_levelMap->Height();

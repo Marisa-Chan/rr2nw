@@ -1,0 +1,121 @@
+#!/bin/bash
+# Сборка игры внутри контейнера. Реплицирует цепочку оригинальных BAT-файлов:
+#   TOREL.BAT/TODEB.BAT  -> выбор release/debug (make.inc + S_SET.H)
+#   MAKEALL.BAT          -> makemods (INPUT..BRIEFING) + ARENA/MAKE.BAT
+#   LINK.BAT             -> wmake в корне (линковка gameWR.exe/gameWD.exe по .rsp)
+#   DESIGN.LIB/make.bat  -> designwr.lib
+# Использование: nw-build [release|debug] [--clean]
+set -e
+MODE=${1:-release}
+NW=/work/src
+cd "$NW"
+
+wm() {
+    /usr/bin/wine /opt/watcom/binnt/wmake.exe "$@"
+}
+
+echo "======== конфигурация: $MODE ========"
+if [ "$MODE" = release ]; then
+    cp R/MAKE.INC make.inc
+    cp ARENA/KERNEL/H/R/S_SET.H ARENA/KERNEL/H/S_SET.H
+else
+    cp D/MAKE.INC make.inc
+    cp ARENA/KERNEL/H/D/S_SET.H ARENA/KERNEL/H/S_SET.H
+fi
+
+# Убираем DOS-маркер конца файла (0x1A), на нём спотыкается wmake,
+# и флаг -7, которого нет в Open Watcom 2.0 (был в Watcom 10.6)
+sed -i 's/\r$//' LINKWR.RSP LINKWD.RSP 2>/dev/null || true
+# jwlink (нативный linux) чувствителен к регистру путей
+for t in WR WD; do
+    [ -f "LINK$t.RSP" ] && sed 's|\\|/|g; s|/arena/|/ARENA/|g; s|\bbush\b|bush.obj|g; s|\bbush_m\b|bush_m.obj|g; s|\bbrend\b|brend.obj|g; s|\bbrect\b|brect.obj|g; s|\bspr_toon\b|spr_toon.obj|g; s|\bscene\b|scene.obj|g; s|\.obj\.obj|.obj|g' "LINK$t.RSP" > "link$t.rsp"
+done
+# системные библиотеки OW2 в поиск jwlink (libp замещает пути по умолчанию)
+sed -i 's|^LINK = wlink libp \\$\(LIBPATH\) d a|LINK = wlink libp \\$\1 libp /opt/watcom/lib386/nt libp /opt/watcom/lib386 libp /opt/watcom/lib386/nt/directx d a|' make.inc 2>/dev/null || true
+sed -i 's/\r$//; s/-7 //g; s/ -wx -we//; s/^\.asm\.obj: \.AUTODEPEND/.asm.obj:/; s/^\.ang\.obj: \.AUTODEPEND/.ang.obj:/' make.inc 2>/dev/null || true
+# LIBPATH у OW2-wlink замещает системные пути — добавляем каталоги библиотек
+
+
+if [ "${2:-}" = "--clean" ]; then
+    echo "======== очистка ========"
+    rm -rf OBJ/WR OBJ/WD obj
+    rm -f DESIGN.LIB/*.lib DESIGN.LIB/*.obj \
+          ARENA/*.lib ARENA/KERNEL/SRC/*.lib ARENA/OBASE/*.lib \
+          ARENA/SC/SRC/*.lib ARENA/SC/ENV/*.lib ARENA/STORAGE/*.lib
+fi
+
+# Ассемблерные объектники: копируем из docker/asm-obj/<WR|wd> (результат nw-asm-wine)
+L_TARG=$([ "$MODE" = release ] && echo WR || echo WD)
+ASM_OBJ_DIR="$NW/docker/asm-obj/$L_TARG"
+if [ -d "$ASM_OBJ_DIR" ] && ls "$ASM_OBJ_DIR"/*.obj >/dev/null 2>&1; then
+    mkdir -p "$NW/OBJ/$L_TARG"
+    cp -n "$ASM_OBJ_DIR"/*.obj "$NW/OBJ/$L_TARG/"
+    echo "======== ассемблерные .obj: скопировано из docker/asm-obj/$L_TARG ========"
+else
+    echo "!!! ВНИМАНИЕ: docker/asm-obj/$L_TARG пуст — сначала выполните docker/nw-asm-wine" >&2
+fi
+
+
+echo "======== DESIGN.LIB -> designwr.lib ========"
+cd "$NW/DESIGN.LIB"
+# lib пересобирается при смене режима (debug-варианты _DEBUG-функций)
+if [ ! -f designwr.lib ] || [ "$(cat .designwr-mode 2>/dev/null)" != "$MODE" ]; then
+    rm -f designwr.lib *.obj .designwr-mode
+    if [ "$MODE" = release ]; then DBG="-d0"; else DBG="-d2 -d_DEBUG"; fi
+    /usr/bin/wine /opt/watcom/binnt/wpp386.exe -mf -bm -5s -zq -iH $DBG -oneatmilrf -s -fpi87 -fp5 -w4 -bt=nt \
+        'SRC\DEBUGEXT\ASSERT.CPP' 'SRC\FILESYS\CONFIG.CPP' 'SRC\FILESYS\FILESYS.CPP' 'SRC\MATHLIB\MATHLIB.CPP' 'SRC\FILESYS\TAGGFILE.CPP'
+    /usr/bin/wine /opt/watcom/binnt/wlib.exe designwr.lib +ASSERT.obj +CONFIG.obj +FILESYS.obj +MATHLIB.obj +TAGGFILE.obj
+    echo "$MODE" > .designwr-mode
+fi
+cd "$NW"
+
+echo "======== модули ========"
+for m in INPUT GRAPH PATTERNS VIEW BUSH SCENE SOUND MAIN BRIEFING; do
+    echo "---------- $m ----------"
+    (cd "$NW/$m" && wm /h /s) || { echo "!!! Ошибка в модуле $m"; exit 1; }
+done
+
+echo "======== ARENA ========"
+(cd "$NW/ARENA/KERNEL/SRC" && wm /h /s) || { echo "!!! Ошибка: ARENA kernel"; exit 1; }
+
+# OBASE: как ARENA/OBASE/MAKE.BAT — все подмодули (список из COMPILE.BAT), затем архив obasew.lib
+OBASE_MODULES="GROUP Bullet Tank Spark Cannon Publish DCross Comander Skin DynObj \
+SkinSpr Sound LIGHT Fountain Smoke Vehicle Explosion Bird ROUTE Taxi People Farter \
+StaticObj MENU Lamp Incubator Recrcen Corpse Player Orphan DMAP Artefact Portal Howitzer"
+for m in $OBASE_MODULES; do
+    (cd "$NW/ARENA/OBASE/$m" && wm /h /s) || { echo "!!! Ошибка: OBASE/$m"; exit 1; }
+done
+(cd "$NW/ARENA/OBASE"      && wm /h /s) || { echo "!!! Ошибка: ARENA obase";  exit 1; }
+(cd "$NW/ARENA/SC/SRC"     && wm /h /s) || { echo "!!! Ошибка: ARENA sc/src"; exit 1; }
+(cd "$NW/ARENA/SC/ENV"     && wm /h /s) || { echo "!!! Ошибка: ARENA sc/env"; exit 1; }
+(cd "$NW/ARENA/STORAGE"    && wm /h /s) || { echo "!!! Ошибка: ARENA storage"; exit 1; }
+(cd "$NW/ARENA"            && wm /h /s) || { echo "!!! Ошибка: ARENA (arenawd.lib)"; exit 1; }
+
+echo "======== линковка (jwlink) ========"
+
+# lowercase obj-файлы (wine пишет UPPERCASE)
+for d in "$NW/OBJ/WR" "$NW/OBJ/WD"; do
+    if [ -d "$d" ]; then
+        find "$d" \( -name "*.OBJ" -o -name "*.obj" \) -exec bash -c 'b="{}"; d=$(dirname "$b"); f=$(basename "$b"); lb=$(echo "$f" | tr "A-Z" "a-z"); [ "$f" != "$lb" ] && mv -f "$b" "$d/$lb"' \; 
+    fi
+done
+L_TARG=$([ "$MODE" = release ] && echo WR || echo WD)
+cd "$NW/OBJ/$L_TARG"
+# jwlink читает wlink.lnk (определения систем, nt_win) из ТЕКУЩЕГО каталога
+cp /opt/owsnap/binl64/wlink.lnk .
+rm -f "../../OUTPUT/game$L_TARG.exe"
+
+# линкер из CI-снапшота OW2: только он знает system nt_win.
+# WATCOM должен указывать на ЭТО дерево — иначе таблица систем не загрузится.
+export WATCOM=/opt/owsnap
+/opt/owsnap/binl64/wlink \
+    n ../../OUTPUT/game$L_TARG.exe \
+    libp /work/src/DESIGN.LIB \
+    libp /opt/owsnap/lib386/nt \
+    libp /opt/owsnap/lib386 \
+    libp /opt/owsnap/lib386/nt/directx \
+    libp /opt/watcom/lib386/nt/directx \
+    @../../link$L_TARG.rsp || { echo "!!! Ошибка линковки"; exit 1; }
+
+echo "======== ГОТОВО ========"
+ls -la "$NW/OUTPUT/" | grep -i game

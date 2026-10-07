@@ -3,7 +3,7 @@ option stack=71680
 op map
 file polygon.obj,clip2da.obj,drawpoly.obj,texture.obj,texturel.obj,gouraud.obj,hazea.obj,sprite.obj,bump.obj
 file graph.obj,light.obj,light1.obj,alpha.obj,drawd3d.obj,sd1_epal.obj,ctrlbrk.obj,spritel.obj
-file sobject.obj,muldiv.obj,fixedfnt.obj,fixfnta.obj,spr_toon,ray.obj,2dgraph.obj,diser.obj
+file sobject.obj,muldiv.obj,fixedfnt.obj,fixfnta.obj,spr_toon.obj,ray.obj,2dgraph.obj,diser.obj
 file image.obj,particle.obj,particla.obj,alphaspr.obj,panel.obj,panela.obj,spritelh.obj,map.obj
 #file _music.obj,sosez.obj,profile.obj,cdrom.obj,cdplay.obj
 #file network.obj
@@ -17,13 +17,13 @@ file keyboard.obj,keydefs.obj,mouse.obj
 # --------------
 #file view.obj
 file body.obj,figure.obj,object.obj,order.obj,dynamic.obj,objmap.obj,keyframe.obj,terrain.obj
-file bush,bush_m,brend,brect
+file bush.obj,bush_m.obj,brend.obj,brect.obj
 #file patterns.obj
 file paltrans.obj,pmovie.obj,font.obj
 #,controls.obj,lizna.obj
 #file motion.obj
-file vessel.obj,shots.obj,movingob.obj,scene
-file ..\..\arena\arenawd.lib
+file vessel.obj,shots.obj,movingob.obj,scene.obj
+file ../../ARENA/arenawd.lib
 #file main.obj
 file mainproc.obj, zav.obj
 #file title.obj,tpal.obj,tfont.obj,tres.obj,tpic.obj,tmenu.obj,tflc.obj, outro.obj, musflc.obj

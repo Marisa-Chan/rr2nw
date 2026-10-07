@@ -17,6 +17,8 @@
 Для сборки designwr.lib необходимо воспользоваться файлом disgnwr.make, т.к. в оригинальном архиве отсутствуют makefile для этой библиотеки.
 
 
+Для простой сборки из под linux созданы инструменты для docker.
+
 
 
 This version of the source code is not a release version, but is very close to the final version.
@@ -34,3 +36,6 @@ For ease of assembly, it is best to place the source files in C: \ nw \ , so as 
 which will have to be done anyway.
 
 To build designwr.lib, you need to use the disgnwr.make file, since the original archive does not contain a makefile for this library.
+
+
+For easy build from linux created docker instruments.
