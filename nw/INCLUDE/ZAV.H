@@ -19,4 +19,8 @@ void ZAV_Deinit();
 void ZAV_PrintFrameInfo();
 void ZAV_PrintOverallInfo();
 
+
+extern char g_HDDir[260];
+extern char g_CDDir[260];
+
 #endif	// __ZAV_H__

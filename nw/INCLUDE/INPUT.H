@@ -1,6 +1,8 @@
 #ifndef	__INPUT_H__
 #define	__INPUT_H__
 
+#include"filesys.h"
+
 class	CUserKeyDefs	{
 public:
 	byte	m_left, m_right, m_up, m_down;

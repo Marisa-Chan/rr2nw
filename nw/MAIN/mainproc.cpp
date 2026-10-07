@@ -97,6 +97,49 @@ CConfigFile	&GLOBAL_Config()
 }
 
 
+char g_HDDir[260], g_CDDir[260];
+
+
+
+//===========================================================================
+//  Reads install paths from the registry key SOFTWARE\LOGOS\RR2
+//  (restored from nw.exe).
+//===========================================================================
+bool InitHddCdPaths()
+{
+   HKEY  hSettings;
+   DWORD type, size;
+   
+   GetCurrentDirectory(sizeof(g_HDDir), g_HDDir);   
+   strcat(g_HDDir, "\\");
+   strcpy(g_CDDir, g_HDDir);
+
+   if (RegOpenKeyEx(HKEY_CURRENT_USER, "SOFTWARE\\LOGOS\\RR2", 0, KEY_ALL_ACCESS, &hSettings) != ERROR_SUCCESS)
+      return 0;
+
+   size = sizeof(g_HDDir);
+   if (RegQueryValueEx(hSettings, "HDDir", NULL, &type, (LPBYTE)g_HDDir, &size) != ERROR_SUCCESS
+       || type != REG_SZ)
+   {
+      RegCloseKey(hSettings);
+      return 0;
+   }
+   g_HDDir[sizeof(g_HDDir) - 1] = '\0';
+
+   size = sizeof(g_CDDir);
+   if (RegQueryValueEx(hSettings, "CDDir", NULL, &type, (LPBYTE)g_CDDir, &size) != ERROR_SUCCESS
+       || type != REG_SZ)
+   {
+      RegCloseKey(hSettings);
+      return 0;
+   }
+   g_CDDir[sizeof(g_CDDir) - 1] = '\0';
+
+   RegCloseKey(hSettings);
+   return 1;
+}
+
+
 
 bool InitLevel()
 {
@@ -139,7 +182,8 @@ int WINAPI WinMain( HINSTANCE  hInst, HINSTANCE, LPSTR, int )
 int main()
 #endif
 {
-
+	
+   InitHddCdPaths();
 
    if (!ZAV_InitGraph(hInst))
 	return 0;

@@ -143,6 +143,7 @@ public:
    void ChangeResEvent();
    double GetTotalBrfTime() const { return(m_brfTotalTime);}
    double GetRemainTime() const {return(m_brfTotalTime-m_time); }
+   double GetBriefingTime(const char *fName);
 
    int  IsRecording() const { return(m_isRecording); }
    virtual bool	shouldDump () { return false; } 

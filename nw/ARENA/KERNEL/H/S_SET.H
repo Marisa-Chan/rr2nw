@@ -7,9 +7,9 @@
 #define __S_SET_H__
 
 #define SUPPORT_TYPEID  0
-#define s_DEBUG_EVENT   1
+#define s_DEBUG_EVENT   0
 #define SUPPORT_bool    0
-#define s_ENABLE_ASSERT 1
+#define s_ENABLE_ASSERT 0
 
 #if !SUPPORT_bool
 typedef int bool;

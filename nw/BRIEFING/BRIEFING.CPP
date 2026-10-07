@@ -580,7 +580,7 @@ int TFlicPlayer::Play(CConfigFile &cfg, const char *flicSectName,
 
    str = cfg(flicSectName, "Name ");
    RTCHECK1(str != NULL, "No flic name in section '%s'.", flicSectName);
-   strcpy(fName, str);
+   sprintf(fName, "%s%s", g_HDDir, str);
    str = cfg(flicSectName, "Text ");
    RTCHECK1(str != NULL, "No text in flic section '%s'.", flicSectName);
    strcpy(text, str);
@@ -1506,4 +1506,20 @@ void T2DAgregat::RedrawAt(TPoint2D at, int angle){
       tmp.y = at.y+m_center[i].y;
       m_obj[i].RedrawAt(tmp, m_color[i]);
    }
+}//---------------------------------------------------
+// Compute total briefing time without playing it.
+// Used by the game scripts (s_GetBriefingTime).
+double CBriefing::GetBriefingTime(const char *fName){
+   ASSERT(fName != NULL);
+   FILE *f = fopen(fName, "r");
+   if(f == NULL){
+      WRITELOG("Briefing :: %s not found\n", fName);
+      return 0.0;
+   }
+   fclose(f);
+
+   // FIXME(nw.exe sync): the shipped binary accumulates the real
+   // flight/flic durations here; the snapshot code only knows the
+   // last computed total.
+   return m_brfTotalTime;
 }
