@@ -11,7 +11,7 @@ OTAR += $(O)\cnststr.obj
 
 
 arenawd.lib: $(OTAR)
-	wlib arenawd.lib $(OTAR)
+	wlib -p=2048 arenawd.lib $(OTAR)
 
 
 $(O)\mproj.obj: mproj\mproj.cpp

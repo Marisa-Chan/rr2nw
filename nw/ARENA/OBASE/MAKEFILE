@@ -35,7 +35,7 @@ OTAR += $(T)\Artefact.obj $(T)\AnimPeop.obj $(T)\Portal.obj
 OTAR += $(T)\Howitzer.obj
 
 obasew.lib: $(OTAR)
-	wlib obasew.lib $(OTAR)
+	wlib -p=2048 obasew.lib $(OTAR)
 
 
 TARGETS = obasew.lib

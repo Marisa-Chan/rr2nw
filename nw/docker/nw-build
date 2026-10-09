@@ -10,9 +10,34 @@ MODE=${1:-release}
 NW=/work/src
 cd "$NW"
 
+export WATCOM="Z:\\opt\\watcom"
+export WINEPATH="$WATCOM\\BINNT;$WATCOM\\BINW"
+export INCLUDE="$WATCOM\\H;$WATCOM\\H\\NT;$WATCOM\\H\\NT\\DIRECTX;$WATCOM\\H\\NT\\DDK"
+export EDPATH="$WATCOM\\EDDAT"
+export WWINHELP="$WATCOM\\BINW"
+export WHTMLHELP="$WATCOM\\BINNT\\HELP"
+export WIPFC="$WATCOM\\WIPFC"
+
+
 wm() {
     /usr/bin/wine /opt/watcom/binnt/wmake.exe "$@"
 }
+
+if [ "$MODE" = "clean" ]; then
+    echo "======== очистка ========"
+    rm -rf OBJ/WR OBJ/WD obj OBJ
+    rm -f DESIGN.LIB/*.lib DESIGN.LIB/*.obj \
+          ARENA/*.lib ARENA/KERNEL/SRC/*.lib ARENA/KERNEL/obj/wr/*.obj \
+		  ARENA/KERNEL/obj/wd/*.obj ARENA/OBASE/obj/*/*.obj ARENA/OBASE/*.lib \
+          ARENA/SC/SRC/*.lib ARENA/SC/ENV/*.lib ARENA/STORAGE/*.lib \
+		  ARENA/OBJ/*/*.obj ARENA/SC/obj/*/*.obj 
+    rm -f DESIGN.LIB/*.err */*.err \
+          ARENA/*.err ARENA/KERNEL/SRC/*.err ARENA/OBASE/*/*.err \
+          ARENA/SC/SRC/*.err ARENA/SC/ENV/*.err ARENA/STORAGE/*.err
+	rm -f "$NW"/DESIGN.LIB/.designwr-mode
+	exit
+fi
+
 
 echo "======== конфигурация: $MODE ========"
 if [ "$MODE" = release ]; then
@@ -27,21 +52,29 @@ fi
 # и флаг -7, которого нет в Open Watcom 2.0 (был в Watcom 10.6)
 sed -i 's/\r$//' LINKWR.RSP LINKWD.RSP 2>/dev/null || true
 # jwlink (нативный linux) чувствителен к регистру путей
-for t in WR WD; do
-    [ -f "LINK$t.RSP" ] && sed 's|\\|/|g; s|/arena/|/ARENA/|g; s|\bbush\b|bush.obj|g; s|\bbush_m\b|bush_m.obj|g; s|\bbrend\b|brend.obj|g; s|\bbrect\b|brect.obj|g; s|\bspr_toon\b|spr_toon.obj|g; s|\bscene\b|scene.obj|g; s|\.obj\.obj|.obj|g' "LINK$t.RSP" > "link$t.rsp"
-done
+#for t in WR WD; do
+#    [ -f "LINK$t.RSP" ] && sed 's|\\|/|g; s|/arena/|/ARENA/|g; s|\bbush\b|bush.obj|g; s|\bbush_m\b|bush_m.obj|g; s|\bbrend\b|brend.obj|g; s|\bbrect\b|brect.obj|g; s|\bspr_toon\b|spr_toon.obj|g; s|\bscene\b|scene.obj|g; s|\.obj\.obj|.obj|g' "LINK$t.RSP" > "link$t.rsp"
+#done
 # системные библиотеки OW2 в поиск jwlink (libp замещает пути по умолчанию)
-sed -i 's|^LINK = wlink libp \\$\(LIBPATH\) d a|LINK = wlink libp \\$\1 libp /opt/watcom/lib386/nt libp /opt/watcom/lib386 libp /opt/watcom/lib386/nt/directx d a|' make.inc 2>/dev/null || true
-sed -i 's/\r$//; s/-7 //g; s/ -wx -we//; s/^\.asm\.obj: \.AUTODEPEND/.asm.obj:/; s/^\.ang\.obj: \.AUTODEPEND/.ang.obj:/' make.inc 2>/dev/null || true
+#sed -i 's|^LINK = wlink libp \\$\(LIBPATH\) d a|LINK = wlink libp \\$\1 libp /opt/watcom/lib386/nt libp /opt/watcom/lib386 libp /opt/watcom/lib386/nt/directx d a|' make.inc 2>/dev/null || true
+#sed -i 's/\r$//; s/-7 //g; s/ -wx -we//; s/^\.asm\.obj: \.AUTODEPEND/.asm.obj:/; s/^\.ang\.obj: \.AUTODEPEND/.ang.obj:/' make.inc 2>/dev/null || true
+sed -i 's/\r$//; s/^\.asm\.obj: \.AUTODEPEND/.asm.obj:/; s/^\.ang\.obj: \.AUTODEPEND/.ang.obj:/' make.inc 2>/dev/null || true
+
 # LIBPATH у OW2-wlink замещает системные пути — добавляем каталоги библиотек
 
 
 if [ "${2:-}" = "--clean" ]; then
     echo "======== очистка ========"
-    rm -rf OBJ/WR OBJ/WD obj
+    rm -rf OBJ/WR OBJ/WD obj OBJ
     rm -f DESIGN.LIB/*.lib DESIGN.LIB/*.obj \
-          ARENA/*.lib ARENA/KERNEL/SRC/*.lib ARENA/OBASE/*.lib \
-          ARENA/SC/SRC/*.lib ARENA/SC/ENV/*.lib ARENA/STORAGE/*.lib
+          ARENA/*.lib ARENA/KERNEL/SRC/*.lib ARENA/KERNEL/obj/wr/*.obj \
+		  ARENA/KERNEL/obj/wd/*.obj ARENA/OBASE/obj/*/*.obj ARENA/OBASE/*.lib \
+          ARENA/SC/SRC/*.lib ARENA/SC/ENV/*.lib ARENA/STORAGE/*.lib \
+		  ARENA/OBJ/*/*.obj ARENA/SC/obj/*/*.obj 
+    rm -f DESIGN.LIB/*.err */*.err \
+          ARENA/*.err ARENA/KERNEL/SRC/*.err ARENA/OBASE/*/*.err \
+          ARENA/SC/SRC/*.err ARENA/SC/ENV/*.err ARENA/STORAGE/*.err
+	rm -f "$NW"/DESIGN.LIB/.designwr-mode
 fi
 
 # Ассемблерные объектники: копируем из docker/asm-obj/<WR|wd> (результат nw-asm-wine)
@@ -61,7 +94,7 @@ cd "$NW/DESIGN.LIB"
 # lib пересобирается при смене режима (debug-варианты _DEBUG-функций)
 if [ ! -f designwr.lib ] || [ "$(cat .designwr-mode 2>/dev/null)" != "$MODE" ]; then
     rm -f designwr.lib *.obj .designwr-mode
-    if [ "$MODE" = release ]; then DBG="-d0"; else DBG="-d2 -d_DEBUG"; fi
+    if [ "$MODE" = release ]; then DBG="-d2"; else DBG="-d2 -d_DEBUG"; fi
     /usr/bin/wine /opt/watcom/binnt/wpp386.exe -mf -bm -5s -zq -iH $DBG -oneatmilrf -s -fpi87 -fp5 -w4 -bt=nt \
         'SRC\DEBUGEXT\ASSERT.CPP' 'SRC\FILESYS\CONFIG.CPP' 'SRC\FILESYS\FILESYS.CPP' 'SRC\MATHLIB\MATHLIB.CPP' 'SRC\FILESYS\TAGGFILE.CPP'
     /usr/bin/wine /opt/watcom/binnt/wlib.exe designwr.lib +ASSERT.obj +CONFIG.obj +FILESYS.obj +MATHLIB.obj +TAGGFILE.obj
@@ -85,35 +118,26 @@ StaticObj MENU Lamp Incubator Recrcen Corpse Player Orphan DMAP Artefact Portal 
 for m in $OBASE_MODULES; do
     (cd "$NW/ARENA/OBASE/$m" && wm /h /s) || { echo "!!! Ошибка: OBASE/$m"; exit 1; }
 done
+
 (cd "$NW/ARENA/OBASE"      && wm /h /s) || { echo "!!! Ошибка: ARENA obase";  exit 1; }
 (cd "$NW/ARENA/SC/SRC"     && wm /h /s) || { echo "!!! Ошибка: ARENA sc/src"; exit 1; }
 (cd "$NW/ARENA/SC/ENV"     && wm /h /s) || { echo "!!! Ошибка: ARENA sc/env"; exit 1; }
 (cd "$NW/ARENA/STORAGE"    && wm /h /s) || { echo "!!! Ошибка: ARENA storage"; exit 1; }
 (cd "$NW/ARENA"            && wm /h /s) || { echo "!!! Ошибка: ARENA (arenawd.lib)"; exit 1; }
 
-echo "======== линковка (jwlink) ========"
+echo "======== линковка ========"
 
-# lowercase obj-файлы (wine пишет UPPERCASE)
-for d in "$NW/OBJ/WR" "$NW/OBJ/WD"; do
-    if [ -d "$d" ]; then
-        find "$d" \( -name "*.OBJ" -o -name "*.obj" \) -exec bash -c 'b="{}"; d=$(dirname "$b"); f=$(basename "$b"); lb=$(echo "$f" | tr "A-Z" "a-z"); [ "$f" != "$lb" ] && mv -f "$b" "$d/$lb"' \; 
-    fi
-done
+
 L_TARG=$([ "$MODE" = release ] && echo WR || echo WD)
 cd "$NW/OBJ/$L_TARG"
-# jwlink читает wlink.lnk (определения систем, nt_win) из ТЕКУЩЕГО каталога
-cp /opt/owsnap/binl64/wlink.lnk .
 rm -f "../../OUTPUT/game$L_TARG.exe"
 
-# линкер из CI-снапшота OW2: только он знает system nt_win.
-# WATCOM должен указывать на ЭТО дерево — иначе таблица систем не загрузится.
-export WATCOM=/opt/owsnap
-/opt/owsnap/binl64/wlink \
+/usr/bin/wine /opt/watcom/binnt/wlink.exe \
+    d a \
     n ../../OUTPUT/game$L_TARG.exe \
     libp /work/src/DESIGN.LIB \
-    libp /opt/owsnap/lib386/nt \
-    libp /opt/owsnap/lib386 \
-    libp /opt/owsnap/lib386/nt/directx \
+    libp /opt/watcom/lib386/nt \
+    libp /opt/watcom/lib386 \
     libp /opt/watcom/lib386/nt/directx \
     @../../link$L_TARG.rsp || { echo "!!! Ошибка линковки"; exit 1; }
 

@@ -68,7 +68,7 @@ C += -d2 -d_DEBUG
 #ASM += /d_DEBUG
 !else
 CPP += -s
-CPP += -d0 -oneatmilrf -7 -fp5
+CPP += -d2 -oneatmilrf -fp5
 !endif
 
 !ifneq NT 0

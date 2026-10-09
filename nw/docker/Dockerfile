@@ -15,28 +15,21 @@ RUN dpkg --add-architecture i386 && apt-get update && \
 # с C:\NW без правок. Инструменты (32-бит PE) запускаются через wine.
 RUN mkdir -p /tmp/owx /opt/watcom && \
     curl -fsSL -o /tmp/ow-setup.exe \
-      https://github.com/open-watcom/open-watcom-v2/releases/download/Current-build/open-watcom-2_0-c-win-x64.exe && \
+	  https://github.com/open-watcom/open-watcom-v2/releases/download/2024-01-01-Build/open-watcom-2_0-c-win-x86.exe && \
     cd /tmp/owx && 7z x -y /tmp/ow-setup.exe >/dev/null && \
     cp -a /tmp/owx/binnt /tmp/owx/binw /tmp/owx/binl64 /tmp/owx/h /tmp/owx/lib286 /tmp/owx/lib386 /tmp/owx/eddat /opt/watcom/ 2>/dev/null; \
     test -f /opt/watcom/binnt/wpp386.exe && \
     test -f /opt/watcom/binnt/wmake.exe && \
+	test -f /opt/watcom/binnt/wlink.exe && \
     rm -rf /tmp/owx /tmp/ow-setup.exe
 
-# --- обёртки: watcom-инструменты и angelmasm через wine ---
-# --- jwlink (форк wlink) — линкер: у OW2-wlink из снапшота нет system nt_win ---
-RUN curl -fsSL -o /tmp/jwlink.zip \
-      "https://downloads.sourceforge.net/project/jwlink/preliminary%20versions/JWlink_v19b13_linux.zip" && \
-    cd /tmp && unzip -o -q jwlink.zip && mv /tmp/jwlink /opt/jwlink && chmod +x /opt/jwlink && \
-    rm -f /tmp/jwlink.zip
-
-# --- линкер из CI-снапшота (у него есть system nt_win; в установщике Current-build он сломан) ---
-RUN curl -fsSL -o /tmp/ow.tar.xz \
-      https://github.com/open-watcom/open-watcom-v2/releases/download/Last-CI-build/ow-snapshot.tar.xz && \
-    mkdir -p /opt/owsnap && tar -xJf /tmp/ow.tar.xz -C /opt/owsnap ./binl64 ./binnt ./lib386 && \
-    chmod +x /opt/owsnap/binl64/* && rm -f /tmp/ow.tar.xz
-
-COPY bin/ /usr/local/bin/
-RUN chmod +x /usr/local/bin/*
+# --- cv2pdb: конвертация CodeView-отладки в PDB (для winedbg) ---
+#RUN curl -fsSL -o /tmp/cv2pdb.zip \
+#      https://github.com/rainers/cv2pdb/releases/download/v0.54/cv2pdb-0.54.zip && \
+#    mkdir -p /opt/cv2pdb && cd /tmp && unzip -o -q cv2pdb.zip -d /opt/cv2pdb && \
+#    rm -f /tmp/cv2pdb.zip && \
+#    printf '#!/bin/bash\nexec /usr/bin/wine /opt/cv2pdb/cv2pdb.exe "$@"\n' > /usr/local/bin/cv2pdb && \
+#    chmod +x /usr/local/bin/cv2pdb
 
 COPY entrypoint.sh /usr/local/bin/nw-entrypoint
 COPY nw-build /usr/local/bin/nw-build
@@ -45,10 +38,7 @@ RUN chmod +x /usr/local/bin/nw-entrypoint /usr/local/bin/nw-build
 ENV WINEPREFIX=/opt/wineprefix \
     WINEDEBUG=-all \
     WINEDLLOVERRIDES="mscoree,mshtml=" \
-    WINEARCH=win64 \
-    WATCOM=C:\\WATCOM \
-    EDPATH=C:\\WATCOM\\EDDAT \
-    INCLUDE=C:\\WATCOM\\h;C:\\WATCOM\\h\\nt
+    WINEARCH=win64 
 
 WORKDIR /work
 ENTRYPOINT ["nw-entrypoint"]

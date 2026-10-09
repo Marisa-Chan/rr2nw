@@ -56,8 +56,8 @@ EXE = 3de$(L_DEBUG).lib
 LIBRARIANRSP = $(PROJ)\3de$(L_DEBUG).rsp
 !endif
 
-CPP = wpp386 -mf -5s -zq -i$(I) -fo$(O)\
-C = wcc386 -mf -5s -zq -i$(I) -fo$(O)\
+CPP = wpp386 -mf -5s -zq -od -i$(I) -fo$(O)\
+C = wcc386 -mf -5s -zq -od -i$(I) -fo$(O)\
 ASM = tasmx /ml /m /t /zi /w-ALN
 ANGEL = angel
 LINK = wlink libp $(LIBPATH) d a
@@ -68,7 +68,7 @@ C += -d2 -d_DEBUG
 #ASM += /d_DEBUG
 !else
 CPP += -s
-CPP += -d0 -oneatmilrf -7 -fp5
+CPP += -d2 -oneatmilrf -fp5
 !endif
 
 !ifneq NT 0

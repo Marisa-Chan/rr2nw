@@ -63,12 +63,12 @@ ANGEL = angel
 LINK = wlink libp $(LIBPATH) d a
 
 !ifneq DEBUG 0
-CPP += -d2 -d_DEBUG
+CPP += -d2 -d_DEBUG -wx -we
 C += -d2 -d_DEBUG
 #ASM += /d_DEBUG
 !else
 CPP += -s
-CPP += -d0 -oneatmilrf -fp5
+CPP += -d2 -oneatmilrf -fp5
 !endif
 
 !ifneq NT 0
