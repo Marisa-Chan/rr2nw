@@ -17,7 +17,7 @@
 Для сборки designwr.lib необходимо воспользоваться файлом disgnwr.make, т.к. в оригинальном архиве отсутствуют makefile для этой библиотеки.
 
 
-Для простой сборки из под linux созданы инструменты для docker.
+Для простой сборки из под linux созданы инструменты для docker. Запускать build.sh из директории docker.
 
 
 
@@ -38,4 +38,4 @@ which will have to be done anyway.
 To build designwr.lib, you need to use the disgnwr.make file, since the original archive does not contain a makefile for this library.
 
 
-For easy build from linux created docker instruments.
+For easy build from linux created docker instruments. Run build.sh from docker dir.
