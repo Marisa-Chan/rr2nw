@@ -1,22 +1,27 @@
 #!/bin/bash
 # Сборка игры внутри контейнера. Реплицирует цепочку оригинальных BAT-файлов:
-#   TOREL.BAT/TODEB.BAT  -> выбор release/debug (make.inc + S_SET.H)
-#   MAKEALL.BAT          -> makemods (INPUT..BRIEFING) + ARENA/MAKE.BAT
+#   TOREL.BAT/TODEB.BAT  -> выбор release/debug (make.inc + s_set.h)
+#   MAKEALL.BAT          -> makemods (INPUT..BRIEFING) + arena/MAKE.BAT
 #   LINK.BAT             -> wmake в корне (линковка gameWR.exe/gameWD.exe по .rsp)
-#   DESIGN.LIB/make.bat  -> designwr.lib
+#   design.lib/make.bat  -> designwr.lib
 # Использование: nw-build [release|debug] [--clean]
 set -e
 MODE=${1:-release}
 NW=/work/src
 cd "$NW"
 
+#export PROJ="Z:\\work\\src"
+export PROJ="C:\\NW"
+export DLIB="$PROJ\\design.lib"
+
+
 export WATCOM="Z:\\opt\\watcom"
-export WINEPATH="$WATCOM\\BINNT;$WATCOM\\BINW"
-export INCLUDE="$WATCOM\\H;$WATCOM\\H\\NT;$WATCOM\\H\\NT\\DIRECTX;$WATCOM\\H\\NT\\DDK"
-export EDPATH="$WATCOM\\EDDAT"
-export WWINHELP="$WATCOM\\BINW"
-export WHTMLHELP="$WATCOM\\BINNT\\HELP"
-export WIPFC="$WATCOM\\WIPFC"
+export WINEPATH="$WATCOM\\binnt;$WATCOM\\binw"
+export INCLUDE="$WATCOM\\h;$WATCOM\\h\\nt;$WATCOM\\h\\nt\\directx;$WATCOM\\h\\nt\\ddk"
+export EDPATH="$WATCOM\\eddat"
+export WWINHELP="$WATCOM\\binw"
+export WHTMLHELP="$WATCOM\\binnt\\help"
+export WIPFC="$WATCOM\\wipfc"
 
 
 wm() {
@@ -25,35 +30,35 @@ wm() {
 
 if [ "$MODE" = "clean" ]; then
     echo "======== очистка ========"
-    rm -rf OBJ/WR OBJ/WD obj OBJ
-    rm -f DESIGN.LIB/*.lib DESIGN.LIB/*.obj \
-          ARENA/*.lib ARENA/KERNEL/SRC/*.lib ARENA/KERNEL/obj/wr/*.obj \
-		  ARENA/KERNEL/obj/wd/*.obj ARENA/OBASE/obj/*/*.obj ARENA/OBASE/*.lib \
-          ARENA/SC/SRC/*.lib ARENA/SC/ENV/*.lib ARENA/STORAGE/*.lib \
-		  ARENA/OBJ/*/*.obj ARENA/SC/obj/*/*.obj 
-    rm -f DESIGN.LIB/*.err */*.err \
-          ARENA/*.err ARENA/KERNEL/SRC/*.err ARENA/OBASE/*/*.err \
-          ARENA/SC/SRC/*.err ARENA/SC/ENV/*.err ARENA/STORAGE/*.err
-	rm -f "$NW"/DESIGN.LIB/.designwr-mode
+    rm -rf obj/wr obj/wd obj
+    rm -f design.lib/*.lib design.lib/*.obj \
+          arena/*.lib arena/kernel/src/*.lib arena/kernel/obj/*/*.obj \
+		  arena/obj/*/*.obj arena/sc/obj/*/*.obj arena/obase/obj/*/*.obj \
+		  arena/obase/*.lib \
+          arena/sc/src/*.lib arena/sc/env/*.lib arena/storage/*.lib
+    rm -f design.lib/*.err */*.err \
+          arena/*.err arena/kernel/src/*.err arena/obase/*/*.err \
+          arena/sc/src/*.err arena/sc/env/*.err arena/storage/*.err
+	rm -f "$NW"/design.lib/.designwr-mode
 	exit
 fi
 
 
 echo "======== конфигурация: $MODE ========"
 if [ "$MODE" = release ]; then
-    cp R/MAKE.INC make.inc
-    cp ARENA/KERNEL/H/R/S_SET.H ARENA/KERNEL/H/S_SET.H
+    cp r/make.inc make.inc
+    cp arena/kernel/h/r/s_set.h arena/kernel/h/s_set.h
 else
-    cp D/MAKE.INC make.inc
-    cp ARENA/KERNEL/H/D/S_SET.H ARENA/KERNEL/H/S_SET.H
+    cp d/make.inc make.inc
+    cp arena/kernel/h/d/s_set.h arena/kernel/h/s_set.h
 fi
 
 # Убираем DOS-маркер конца файла (0x1A), на нём спотыкается wmake,
 # и флаг -7, которого нет в Open Watcom 2.0 (был в Watcom 10.6)
-sed -i 's/\r$//' LINKWR.RSP LINKWD.RSP 2>/dev/null || true
+sed -i 's/\r$//' linkwr.rsp linkwd.rsp 2>/dev/null || true
 # jwlink (нативный linux) чувствителен к регистру путей
 #for t in WR WD; do
-#    [ -f "LINK$t.RSP" ] && sed 's|\\|/|g; s|/arena/|/ARENA/|g; s|\bbush\b|bush.obj|g; s|\bbush_m\b|bush_m.obj|g; s|\bbrend\b|brend.obj|g; s|\bbrect\b|brect.obj|g; s|\bspr_toon\b|spr_toon.obj|g; s|\bscene\b|scene.obj|g; s|\.obj\.obj|.obj|g' "LINK$t.RSP" > "link$t.rsp"
+#    [ -f "LINK$t.RSP" ] && sed 's|\\|/|g; s|/arena/|/arena/|g; s|\bbush\b|bush.obj|g; s|\bbush_m\b|bush_m.obj|g; s|\bbrend\b|brend.obj|g; s|\bbrect\b|brect.obj|g; s|\bspr_toon\b|spr_toon.obj|g; s|\bscene\b|scene.obj|g; s|\.obj\.obj|.obj|g' "LINK$t.RSP" > "link$t.rsp"
 #done
 # системные библиотеки OW2 в поиск jwlink (libp замещает пути по умолчанию)
 #sed -i 's|^LINK = wlink libp \\$\(LIBPATH\) d a|LINK = wlink libp \\$\1 libp /opt/watcom/lib386/nt libp /opt/watcom/lib386 libp /opt/watcom/lib386/nt/directx d a|' make.inc 2>/dev/null || true
@@ -65,81 +70,75 @@ sed -i 's/\r$//; s/^\.asm\.obj: \.AUTODEPEND/.asm.obj:/; s/^\.ang\.obj: \.AUTODE
 
 if [ "${2:-}" = "--clean" ]; then
     echo "======== очистка ========"
-    rm -rf OBJ/WR OBJ/WD obj OBJ
-    rm -f DESIGN.LIB/*.lib DESIGN.LIB/*.obj \
-          ARENA/*.lib ARENA/KERNEL/SRC/*.lib ARENA/KERNEL/obj/wr/*.obj \
-		  ARENA/KERNEL/obj/wd/*.obj ARENA/OBASE/obj/*/*.obj ARENA/OBASE/*.lib \
-          ARENA/SC/SRC/*.lib ARENA/SC/ENV/*.lib ARENA/STORAGE/*.lib \
-		  ARENA/OBJ/*/*.obj ARENA/SC/obj/*/*.obj 
-    rm -f DESIGN.LIB/*.err */*.err \
-          ARENA/*.err ARENA/KERNEL/SRC/*.err ARENA/OBASE/*/*.err \
-          ARENA/SC/SRC/*.err ARENA/SC/ENV/*.err ARENA/STORAGE/*.err
-	rm -f "$NW"/DESIGN.LIB/.designwr-mode
+    rm -rf obj/wr obj/wd obj
+    rm -f design.lib/*.lib design.lib/*.obj \
+          arena/*.lib arena/kernel/src/*.lib arena/obase/*.lib \
+          arena/sc/src/*.lib arena/sc/env/*.lib arena/storage/*.lib
 fi
 
-# Ассемблерные объектники: копируем из docker/asm-obj/<WR|wd> (результат nw-asm-wine)
-L_TARG=$([ "$MODE" = release ] && echo WR || echo WD)
+# Ассемблерные объектники: копируем из docker/asm-obj/<wr|wd> (результат nw-asm-wine)
+L_TARG=$([ "$MODE" = release ] && echo wr || echo wd)
 ASM_OBJ_DIR="$NW/docker/asm-obj/$L_TARG"
 if [ -d "$ASM_OBJ_DIR" ] && ls "$ASM_OBJ_DIR"/*.obj >/dev/null 2>&1; then
-    mkdir -p "$NW/OBJ/$L_TARG"
-    cp -n "$ASM_OBJ_DIR"/*.obj "$NW/OBJ/$L_TARG/"
+    mkdir -p "$NW/obj/$L_TARG"
+    cp -n "$ASM_OBJ_DIR"/*.obj "$NW/obj/$L_TARG/"
     echo "======== ассемблерные .obj: скопировано из docker/asm-obj/$L_TARG ========"
 else
     echo "!!! ВНИМАНИЕ: docker/asm-obj/$L_TARG пуст — сначала выполните docker/nw-asm-wine" >&2
 fi
 
 
-echo "======== DESIGN.LIB -> designwr.lib ========"
-cd "$NW/DESIGN.LIB"
+echo "======== design.lib -> designwr.lib ========"
+cd "$NW/design.lib"
 # lib пересобирается при смене режима (debug-варианты _DEBUG-функций)
 if [ ! -f designwr.lib ] || [ "$(cat .designwr-mode 2>/dev/null)" != "$MODE" ]; then
     rm -f designwr.lib *.obj .designwr-mode
     if [ "$MODE" = release ]; then DBG="-d2"; else DBG="-d2 -d_DEBUG"; fi
-    /usr/bin/wine /opt/watcom/binnt/wpp386.exe -mf -bm -5s -zq -iH $DBG -oneatmilrf -s -fpi87 -fp5 -w4 -bt=nt \
-        'SRC\DEBUGEXT\ASSERT.CPP' 'SRC\FILESYS\CONFIG.CPP' 'SRC\FILESYS\FILESYS.CPP' 'SRC\MATHLIB\MATHLIB.CPP' 'SRC\FILESYS\TAGGFILE.CPP'
-    /usr/bin/wine /opt/watcom/binnt/wlib.exe designwr.lib +ASSERT.obj +CONFIG.obj +FILESYS.obj +MATHLIB.obj +TAGGFILE.obj
+    /usr/bin/wine /opt/watcom/binnt/wpp386.exe -mf -bm -5s -zq -ih $DBG -oneatmilrf -s -fpi87 -fp5 -w4 -bt=nt \
+        'src/debugext/assert.cpp' 'src/filesys/config.cpp' 'src/filesys/filesys.cpp' 'src/mathlib/mathlib.cpp' 'src/filesys/taggfile.cpp'
+    /usr/bin/wine /opt/watcom/binnt/wlib.exe designwr.lib +assert.obj +config.obj +filesys.obj +mathlib.obj +taggfile.obj
     echo "$MODE" > .designwr-mode
 fi
 cd "$NW"
 
 echo "======== модули ========"
-for m in INPUT GRAPH PATTERNS VIEW BUSH SCENE SOUND MAIN BRIEFING; do
+for m in input graph patterns view bush scene sound main briefing; do
     echo "---------- $m ----------"
     (cd "$NW/$m" && wm /h /s) || { echo "!!! Ошибка в модуле $m"; exit 1; }
 done
 
-echo "======== ARENA ========"
-(cd "$NW/ARENA/KERNEL/SRC" && wm /h /s) || { echo "!!! Ошибка: ARENA kernel"; exit 1; }
+echo "======== arena ========"
+(cd "$NW/arena/kernel/src" && wm /h /s) || { echo "!!! Ошибка: arena kernel"; exit 1; }
 
-# OBASE: как ARENA/OBASE/MAKE.BAT — все подмодули (список из COMPILE.BAT), затем архив obasew.lib
-OBASE_MODULES="GROUP Bullet Tank Spark Cannon Publish DCross Comander Skin DynObj \
-SkinSpr Sound LIGHT Fountain Smoke Vehicle Explosion Bird ROUTE Taxi People Farter \
-StaticObj MENU Lamp Incubator Recrcen Corpse Player Orphan DMAP Artefact Portal Howitzer"
-for m in $OBASE_MODULES; do
-    (cd "$NW/ARENA/OBASE/$m" && wm /h /s) || { echo "!!! Ошибка: OBASE/$m"; exit 1; }
+# obase: как arena/obase/MAKE.BAT — все подмодули (список из COMPILE.BAT), затем архив obasew.lib
+obase_MODULES="group bullet tank spark cannon publish dcross comander skin dynobj \
+skinspr sound light fountain smoke vehicle explosion bird route taxi people farter \
+staticobj menu lamp incubator recrcen corpse player orphan dmap artefact portal howitzer"
+for m in $obase_MODULES; do
+    (cd "$NW/arena/obase/$m" && wm /h /s) || { echo "!!! Ошибка: obase/$m"; exit 1; }
 done
 
-(cd "$NW/ARENA/OBASE"      && wm /h /s) || { echo "!!! Ошибка: ARENA obase";  exit 1; }
-(cd "$NW/ARENA/SC/SRC"     && wm /h /s) || { echo "!!! Ошибка: ARENA sc/src"; exit 1; }
-(cd "$NW/ARENA/SC/ENV"     && wm /h /s) || { echo "!!! Ошибка: ARENA sc/env"; exit 1; }
-(cd "$NW/ARENA/STORAGE"    && wm /h /s) || { echo "!!! Ошибка: ARENA storage"; exit 1; }
-(cd "$NW/ARENA"            && wm /h /s) || { echo "!!! Ошибка: ARENA (arenawd.lib)"; exit 1; }
+(cd "$NW/arena/obase"      && wm /h /s) || { echo "!!! Ошибка: arena obase";  exit 1; }
+(cd "$NW/arena/sc/src"     && wm /h /s) || { echo "!!! Ошибка: arena sc/src"; exit 1; }
+(cd "$NW/arena/sc/env"     && wm /h /s) || { echo "!!! Ошибка: arena sc/env"; exit 1; }
+(cd "$NW/arena/storage"    && wm /h /s) || { echo "!!! Ошибка: arena storage"; exit 1; }
+(cd "$NW/arena"            && wm /h /s) || { echo "!!! Ошибка: arena (arenawd.lib)"; exit 1; }
 
 echo "======== линковка ========"
 
 
-L_TARG=$([ "$MODE" = release ] && echo WR || echo WD)
-cd "$NW/OBJ/$L_TARG"
-rm -f "../../OUTPUT/game$L_TARG.exe"
+L_TARG=$([ "$MODE" = release ] && echo wr || echo wd)
+cd "$NW/obj/$L_TARG"
+rm -f "../../output/game$L_TARG.exe"
 
 /usr/bin/wine /opt/watcom/binnt/wlink.exe \
     d a \
-    n ../../OUTPUT/game$L_TARG.exe \
-    libp /work/src/DESIGN.LIB \
+    n ../../output/game$L_TARG.exe \
+    libp /work/src/design.lib \
     libp /opt/watcom/lib386/nt \
     libp /opt/watcom/lib386 \
     libp /opt/watcom/lib386/nt/directx \
     @../../link$L_TARG.rsp || { echo "!!! Ошибка линковки"; exit 1; }
 
 echo "======== ГОТОВО ========"
-ls -la "$NW/OUTPUT/" | grep -i game
+ls -la "$NW/output/" | grep -i game

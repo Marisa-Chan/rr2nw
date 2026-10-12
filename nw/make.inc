@@ -3,8 +3,10 @@ NT=1
 OPENGL=0
 GLIDE=0
 
-PROJ = C:\NW
-DLIB = C:\NW\DESIGN.LIB
+#PROJ = C:\NW
+PROJ = $(%PROJ)
+#DLIB = C:\NW\DESIGN.LIB
+DLIB = $(%DLIB)
 
 !ifdef _3DE
 DEBUG=1
@@ -19,45 +21,45 @@ GLIDE=0
 !endif
 
 !ifneq DEBUG 0
-L_DEBUG=D
+L_DEBUG=d
 !else
-L_DEBUG=R
+L_DEBUG=r
 !endif
 
 !ifneq NT 0
-L_SYS=W
+L_SYS=w
 !else
-L_SYS=D
+L_SYS=d
 !endif
 
 !ifneq OPENGL 0
-L_SYS=G
+L_SYS=g
 !endif
 !ifneq GLIDE 0
-L_SYS+=F
+L_SYS+=f
 !endif
 
 L_TARG=$(L_SYS)$(L_DEBUG)
 
-I=$(PROJ)\INCLUDE;$(DLIB)\H;$(PROJ)\ARENA;$(PROJ)\ARENA\H
-LIBPATH=$(DLIB)\WC
-OUT=..\..\OUTPUT
+I=$(PROJ)/include;$(DLIB)/h;$(PROJ)/arena;$(PROJ)/arena/h
+LIBPATH=$(DLIB)/wc
+OUT=../../output
 
 
-EXE=$(OUT)\game$(L_TARG).exe
-O0 = OBJ\$(L_TARG)
-O = ..\$(O0)
-LINKRSP =..\..\link$(L_TARG).rsp
+EXE=$(OUT)/game$(L_TARG).exe
+O0 = obj/$(L_TARG)
+O = ../$(O0)
+LINKRSP =../../link$(L_TARG).rsp
 
 !ifdef _3DE
 LIBRARIAN = wlib -n
-O0 = OBJ\3$(L_DEBUG)
+O0 = obj/3$(L_DEBUG)
 EXE = 3de$(L_DEBUG).lib
-LIBRARIANRSP = $(PROJ)\3de$(L_DEBUG).rsp
+LIBRARIANRSP = $(PROJ)/3de$(L_DEBUG).rsp
 !endif
 
-CPP = wpp386 -mf -5s -zq -i$(I) -fo$(O)\
-C = wcc386 -mf -5s -zq -i$(I) -fo$(O)\
+CPP = wpp386 -mf -5s -zq -od -i$(I) -fo$(O)\
+C = wcc386 -mf -5s -zq -od -i$(I) -fo$(O)\
 ASM = tasmx /ml /m /t /zi /w-ALN
 ANGEL = angel
 LINK = wlink libp $(LIBPATH) d a
@@ -86,7 +88,7 @@ CPP += -d_OPENGL
 CPP+= -d_3DFX
 !endif
 
-ASMSX = ,$(O)\
+ASMSX = ,$(O)/
 
 !ifdef _3DE
 CPP += -d_VIEW_ORTHO
@@ -96,17 +98,17 @@ ASM += /d_WINNT
 .EXTENSIONS: .ang
 
 .cpp.obj: .AUTODEPEND
-	$(CPP) $^&.CPP
+	$(CPP) $^&.cpp
 
 .c.obj: .AUTODEPEND
-	$(C) $^&.C
+	$(C) $^&.c
 
 .asm.obj:
-	$(ASM) $^&.ASM$(ASMSX)
+	$(ASM) $^&.asm$(asmsx)
 
 .ang.obj:
-	$(ANGEL) $^&.ANG $(O)\$^&.ASX
-	$(ASM) $(O)\$^&.ASX$(ASMSX)
+	$(ANGEL) $^&.ang $(O)/$^&.asx
+	$(ASM) $(O)/$^&.asx$(asmsx)
 
 BUILD =all: $(TARGETS)
 

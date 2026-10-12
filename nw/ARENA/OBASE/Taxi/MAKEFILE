@@ -1,6 +1,0 @@
-!include ..\..\..\make.inc
-
-TARGETS = $(O)\Taxi.obj
-
-$(BUILD)
-
